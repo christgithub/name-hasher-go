@@ -1,0 +1,62 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: curl --silent --fail http://localhost:9200/_cluster/health || exit 1
+      interval: 10s
+      retries: 10
+    networks:
+      - backend
+
+  sftp-server:
+    image: atmoz/sftp:alpine
+    container_name: sftp-server
+    ports:
+      - "2222:22"
+    volumes:
+      - ./downloads:/home/devuser/upload
+    command: devuser:devpass:::upload
+    networks:
+      - backend
+
+  es-init:
+    image: curlimages/curl:latest
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./config:/config:ro
+    entrypoint: >
+      sh -c "
+      echo 'Creating Elasticsearch sftp_index index';
+      curl -X PUT http://elasticsearch:9200/sftp_index -H 'Content-Type: application/json' -d @/config/index.json || true;
+      "
+    networks:
+      - backend
+
+  sftp-indexer:
+    build: .
+    container_name: sftp-indexer
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      sftp-server:
+        condition: service_started
+    environment:
+      - SFTP_HOST=sftp-server:22
+      - SFTP_USER=devuser
+      - SFTP_PASSWORD=devpass
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    volumes:
+      - ./downloads:/app/downloads
+    networks:
+      - backend
+
+networks:
+  backend:

@@ -1,0 +1,11 @@
+{
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "properties": {
+      "filename": { "type": "keyword" },
+      "content": { "type": "text" }
+    }
+  }
+}

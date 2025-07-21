@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
+	"runtime"
 	"sync"
-	"time"
 
 	"fileparser/domain"
 	"fileparser/downloader"
@@ -16,9 +16,23 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+
+	"runtime/pprof"
 )
 
 func connectSFTP() (*sftp.Client, error) {
+
+	pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+	var memStats runtime.MemStats
+
+	// Capture current memory statistics
+	runtime.ReadMemStats(&memStats)
+
+	log.Printf("Alloc = %v KB\n", memStats.Alloc/1024)
+	log.Printf("TotalAlloc = %v KB\n", memStats.TotalAlloc/1024)
+	log.Printf("Sys = %v KB\n", memStats.Sys/1024)
+	log.Printf("NumGC = %v\n", memStats.NumGC)
+
 	config := &ssh.ClientConfig{
 		User:            "devuser",
 		Auth:            []ssh.AuthMethod{ssh.Password("devpass")},
@@ -99,6 +113,5 @@ func main() {
 
 	indexWG.Wait()
 
-	log.Println("✅ All files indexed. Waiting 10 minutes before terminating")
-	time.Sleep(10 * time.Minute)
+	log.Println("✅ All files indexed.")
 }

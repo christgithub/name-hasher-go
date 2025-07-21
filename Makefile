@@ -43,3 +43,6 @@ restart-app:
 # Remove built Docker image
 clean:
 	docker rmi -f $(IMAGE_NAME) || true
+
+indexer:
+	docker exec -it sftp-indexer /bin/sh
